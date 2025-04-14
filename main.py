@@ -5,12 +5,11 @@ import time
 
 def descargar_html_con_selenium(url, tiempo_espera=5):
     opciones = Options()
-    opciones.add_argument("--headless=new")  # Usa el nuevo modo headless que respeta tamaño
+    opciones.add_argument("--headless=new")
     opciones.add_argument("--disable-gpu")
     opciones.add_argument("--window-size=8192,4128")  
 
-    servicio = Service()  # Usa el driver desde el PATH si está instalado
-    driver = webdriver.Chrome(service=servicio, options=opciones)
+    driver = webdriver.Chrome(service=Service()  , options=opciones)
     
     try:
         driver.maximize_window()
@@ -34,6 +33,6 @@ def descargar_html_con_selenium(url, tiempo_espera=5):
     finally:
         driver.quit()
 
-# Ejemplo de uso
+
 url = "https://ul.waze.com/ul?ll=-33.4368613710077%2C-70.63374640102157&navigate=yes&zoom=16&utm_campaign=default&utm_source=waze_website&utm_medium=lm_share_location"
 descargar_html_con_selenium(url)
