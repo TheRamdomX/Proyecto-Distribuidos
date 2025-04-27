@@ -2,9 +2,10 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import StaleElementReferenceException
 import time
-import re
 
 # División de cuadrantes
 def generar_cuadrantes(top, bottom, left, right, filas, columnas):
@@ -24,35 +25,39 @@ def procesar_cuadrante(driver, lat, lng):
     url = f"https://ul.waze.com/ul?ll={lat}%2C{lng}&navigate=yes&zoom=16"
     print(f"\n[🔍] Visitando cuadrante: {lat}, {lng}")
     driver.get(url)
-    time.sleep(5)
+    time.sleep(2)
 
-    marcadores = driver.find_elements(By.CSS_SELECTOR, "div.leaflet-marker-icon")
-    print(f"Se encontraron {len(marcadores)} marcadores")
+    try:
+        marcadores = driver.find_elements(By.CSS_SELECTOR, "div.leaflet-marker-icon")
+        print(f"Se encontraron {len(marcadores)} marcadores")
 
-    mapa = driver.find_element(By.ID, "map")
+        mapa = driver.find_element(By.ID, "map")
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "map")))
 
-    for i, marcador in enumerate(marcadores):
-        style = marcador.get_attribute("style")
-        match = re.search(r'translate3d\(([\d\.]+)px,\s*([\d\.]+)px', style)
-        if match:
-            x = float(match.group(1))
-            y = float(match.group(2))
+        mapa_width = mapa.size['width']
+        mapa_height = mapa.size['height']
+        print(f"Mapa dimensions: width={mapa_width}, height={mapa_height}")
 
-            # Sólo si están dentro del viewport (1920x1080)
-            if x < 1920 and y < 1080:
-                print(f"[{i}] Clic en x={x}, y={y}")
-                actions = ActionChains(driver)
-                actions.move_to_element_with_offset(mapa, x, y).click().perform()
-                time.sleep(0.5)
-            else:
-                print(f"[{i}] Fuera de viewport: x={x}, y={y}")
+        for i in range(len(marcadores)):
+            try:
+                # Re-locate the markers dynamically
+                marcadores = driver.find_elements(By.CSS_SELECTOR, "div.leaflet-marker-icon")
+                marcador = marcadores[i]
+                style = marcador.get_attribute("style")
+                print(f"Marcador {i}: {style}")
+            except StaleElementReferenceException:
+                print(f"[❌] Error: Stale element reference for marcador {i}")
+    except Exception as e:
+        print(f"[❌] Error while processing cuadrante: {e}")
 
 # Configuración de Selenium
 def iniciar_driver():
     opciones = Options()
+    opciones.add_argument("--headless=new")
     opciones.add_argument("--disable-gpu")
-    opciones.add_argument("--window-size=1920,1080")
-    # NO headless para que puedas verlo
+    opciones.add_argument("--no-sandbox")
+    opciones.add_argument("--disable-dev-shm-usage")
+    opciones.add_argument("--window-size=16384,8064")
     servicio = Service()
     return webdriver.Chrome(service=servicio, options=opciones)
 
