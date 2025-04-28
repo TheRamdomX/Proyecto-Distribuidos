@@ -86,7 +86,7 @@ services:
       - KAFKA_SERVER=kafka:9092
       - REDIS_HOST=redis
       - CACHE_POLICY=LRU
-      - CACHE_CAPACITY=1000
+      - CACHE_CAPACITY=1000  
     restart: on-failure
 
   cache-system-lfu:
@@ -100,7 +100,7 @@ services:
       - KAFKA_SERVER=kafka:9092
       - REDIS_HOST=redis
       - CACHE_POLICY=LFU
-      - CACHE_CAPACITY=800
+      - CACHE_CAPACITY=800   
     restart: on-failure
 
 volumes:

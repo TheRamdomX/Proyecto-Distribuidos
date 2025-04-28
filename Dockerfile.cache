@@ -7,4 +7,4 @@ RUN pip install --no-cache-dir -r requirements_cache.txt
 
 COPY cache_system.py .
 
-CMD ["python", "cache_system.py", "${CACHE_POLICY}", "${CACHE_CAPACITY}"]
+CMD python cache_system.py ${CACHE_POLICY:-LRU} ${CACHE_CAPACITY:-1000}

@@ -1,5 +1,6 @@
 import json
 import time
+import os
 from kafka import KafkaConsumer
 import redis
 from collections import OrderedDict
@@ -162,8 +163,11 @@ def run_cache_system(policy='LRU', capacity=1000):
             print(f"✅ Cache hit para evento {query['event_id']}")
 
 if __name__ == "__main__":
-    # Ejemplo: ejecutar con diferentes políticas
-    import sys
-    policy = sys.argv[1] if len(sys.argv) > 1 else 'LRU'
-    capacity = int(sys.argv[2]) if len(sys.argv) > 2 else 1000
+    
+    policy = os.getenv('CACHE_POLICY', 'LRU')
+    try:
+        capacity = int(os.getenv('CACHE_CAPACITY', '1000'))
+    except ValueError:
+        capacity = 1000
+    
     run_cache_system(policy=policy, capacity=capacity)

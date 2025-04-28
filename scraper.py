@@ -21,7 +21,7 @@ WINDOW_HEIGHT = 8064
 # Configuración de cuadrantes
 top, bottom = -33.3, -33.7
 left, right = -71.0, -70.3
-filas, columnas = 20, 20
+filas, columnas = 2, 2
 
 # Crear Productor Kafka
 producer = KafkaProducer(
