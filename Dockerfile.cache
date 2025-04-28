@@ -1,0 +1,10 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY requirements_cache.txt .
+RUN pip install --no-cache-dir -r requirements_cache.txt
+
+COPY cache_system.py .
+
+CMD ["python", "cache_system.py", "${CACHE_POLICY}", "${CACHE_CAPACITY}"]

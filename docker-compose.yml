@@ -34,6 +34,13 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
   scraper:
     build:
       context: .
@@ -53,5 +60,49 @@ services:
       - mysql
     restart: on-failure
 
+  traffic-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.traffic
+    depends_on:
+      - kafka
+      - mysql
+    environment:
+      - KAFKA_SERVER=kafka:9092
+      - MYSQL_HOST=mysql
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=waze_db
+    restart: on-failure
+
+  cache-system-lru:
+    build:
+      context: .
+      dockerfile: Dockerfile.cache
+    depends_on:
+      - kafka
+      - redis
+    environment:
+      - KAFKA_SERVER=kafka:9092
+      - REDIS_HOST=redis
+      - CACHE_POLICY=LRU
+      - CACHE_CAPACITY=1000
+    restart: on-failure
+
+  cache-system-lfu:
+    build:
+      context: .
+      dockerfile: Dockerfile.cache
+    depends_on:
+      - kafka
+      - redis
+    environment:
+      - KAFKA_SERVER=kafka:9092
+      - REDIS_HOST=redis
+      - CACHE_POLICY=LFU
+      - CACHE_CAPACITY=800
+    restart: on-failure
+
 volumes:
   mysql_data:
+  redis_data:
