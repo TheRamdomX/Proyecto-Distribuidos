@@ -1,0 +1,12 @@
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y \
+    wget unzip curl chromium-driver chromium \
+    && apt-get clean
+
+COPY requirements_scraper.txt .
+RUN pip install --no-cache-dir -r requirements_scraper.txt
+
+COPY scraper.py .
+
+CMD ["python", "scraper.py"]

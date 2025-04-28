@@ -1,28 +1,40 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import StaleElementReferenceException
+# scraper.py (Scraper Waze usando Kafka)
+
+import re
+import os
+import json
 import time
 import threading
-from queue import Queue
-import csv
 from datetime import datetime
-import os
+from queue import Queue
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import StaleElementReferenceException
+from kafka import KafkaProducer
 
 # Configuración global
-NUM_THREADS = 4  # Número de hilos concurrentes (ajustar según recursos)
-CSV_FILENAME = "waze_eventos.csv"
-CSV_HEADERS = ["timestamp", "thread_id", "latitud", "longitud", "tipo_evento", "estilo_marcador", "url_cuadrante"]
+NUM_THREADS = 5
+TOPIC = "waze-events"
+KAFKA_SERVER = "kafka:9092"
 
 # División de cuadrantes
+TOP, BOTTOM = -33.3, -33.7
+LEFT, RIGHT = -71.0, -70.3
+FILAS, COLUMNAS = 50, 50
+
+# Iniciar Kafka Producer
+producer = KafkaProducer(
+    bootstrap_servers=KAFKA_SERVER,
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
+
+# Generar cuadrantes
 def generar_cuadrantes(top, bottom, left, right, filas, columnas):
     lat_step = (top - bottom) / filas
     lng_step = (right - left) / columnas
     cuadrantes = []
-
     for i in range(filas):
         for j in range(columnas):
             lat = bottom + i * lat_step + lat_step / 2
@@ -30,7 +42,7 @@ def generar_cuadrantes(top, bottom, left, right, filas, columnas):
             cuadrantes.append((lat, lng))
     return cuadrantes
 
-# Configuración de Selenium (por thread)
+# Iniciar driver Selenium
 def iniciar_driver():
     opciones = Options()
     opciones.add_argument("--headless=new")
@@ -41,39 +53,46 @@ def iniciar_driver():
     servicio = Service()
     return webdriver.Chrome(service=servicio, options=opciones)
 
-# Función para escribir en el CSV (con bloqueo de thread)
-def guardar_evento(evento, lock):
-    file_exists = os.path.isfile(CSV_FILENAME)
-    
-    with lock:
-        with open(CSV_FILENAME, mode='a', newline='', encoding='utf-8') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=CSV_HEADERS)
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow(evento)
-
-# Función para determinar el tipo de evento basado en el estilo del marcador
+# Determinar tipo de evento
 def determinar_tipo_evento(style):
-    if "waze_construction" in style:
-        return "OBRA"
-    elif "waze_hazard" in style:
-        return "PELIGRO"
-    elif "waze_police" in style:
-        return "POLICIA"
-    elif "waze_crash" in style:
-        return "ACCIDENTE"
-    elif "waze_jam" in style:
-        return "CONGESTION"
-    else:
-        return "DESCONOCIDO"
+    match style:
+        case style if "wm-alert-icon--road-closed" in style:
+            return "CAMINO CORTADO"
+        case style if "wm-alert-icon--hazard" in style:
+            return "PELIGRO"
+        case style if "wm-alert-icon--police" in style:
+            return "POLICIA"
+        case style if "wm-alert-icon--accident" in style:
+            return "ACCIDENTE"
+        case style if "waze_jam" in style:
+            return "CONGESTION"
+        case _:
+            return "DESCONOCIDO"
 
-# Función para procesar un cuadrante
-def procesar_cuadrante(driver, lat, lng, thread_id, lock):
+# Extraer pixeles
+
+def extraer_pixeles_translate3d(style_text):
+    match = re.search(r'translate3d\(([-\d.]+)px,\s*([-\d.]+)px', style_text)
+    if match:
+        x = float(match.group(1))
+        y = float(match.group(2))
+        return x, y
+    else:
+        return None, None
+
+# Convertir pixeles a latlon
+def convertir_pixeles_a_latlon(x, y, width, height, lat_min, lat_max, lon_min, lon_max):
+    lon = lon_min + (lon_max - lon_min) * (x / width)
+    lat = lat_max - (lat_max - lat_min) * (y / height)
+    return lat, lon
+
+# Procesar un cuadrante
+def procesar_cuadrante(driver, lat, lng, thread_id):
     url = f"https://ul.waze.com/ul?ll={lat}%2C{lng}&navigate=yes&zoom=16"
-    print(f"\n[Thread-{thread_id}] 🔍 Visitando cuadrante: {lat}, {lng}")
+    print(f"[Thread-{thread_id}] Visitando cuadrante: {lat}, {lng}")
     driver.get(url)
     time.sleep(2)
-
+    
     try:
         marcadores = driver.find_elements(By.CSS_SELECTOR, "div.leaflet-marker-icon")
         print(f"[Thread-{thread_id}] Se encontraron {len(marcadores)} marcadores")
@@ -82,74 +101,71 @@ def procesar_cuadrante(driver, lat, lng, thread_id, lock):
             try:
                 marcadores = driver.find_elements(By.CSS_SELECTOR, "div.leaflet-marker-icon")
                 marcador = marcadores[i]
-                style = marcador.get_attribute("style")
-                tipo_evento = determinar_tipo_evento(style)
-                
-                print(f"[Thread-{thread_id}] Marcador {i}: {tipo_evento} - {style}")
-                
-                # Guardar evento en CSV
-                evento = {
-                    "timestamp": datetime.now().isoformat(),
-                    "thread_id": thread_id,
-                    "latitud": lat,
-                    "longitud": lng,
-                    "tipo_evento": tipo_evento,
-                    "estilo_marcador": style,
-                    "url_cuadrante": url
-                }
-                guardar_evento(evento, lock)
-                
-            except StaleElementReferenceException:
-                print(f"[Thread-{thread_id}] ❌ Error: Stale element reference for marcador {i}")
-    except Exception as e:
-        print(f"[Thread-{thread_id}] ❌ Error while processing cuadrante: {e}")
 
-# Función worker para los threads
-def worker(q, thread_id, lock):
-    print(f"[Thread-{thread_id}] Iniciando worker")
+                style_class = marcador.get_attribute("class")
+                style_attr = marcador.get_attribute("style")
+                tipo_evento = determinar_tipo_evento(style_class)
+
+                if tipo_evento == "DESCONOCIDO":
+                    continue
+
+                x, y = extraer_pixeles_translate3d(style_attr)
+                if x is not None and y is not None:
+                    lat_event, lon_event = convertir_pixeles_a_latlon(
+                        x, y, 16384, 8064, lat, lat - 0.1, lng - 0.1, lng + 0.1
+                    )
+
+                    evento = {
+                        "timestamp": datetime.now().isoformat(),
+                        "latitude": lat_event,
+                        "longitude": lon_event,
+                        "event_type": tipo_evento
+                    }
+                    producer.send(TOPIC, evento)
+                    print(f"[Thread-{thread_id}] Evento enviado a Kafka: {evento}")
+
+            except StaleElementReferenceException:
+                print(f"[Thread-{thread_id}] ❌ Error: Stale element reference para marcador {i}")
+    except Exception as e:
+        print(f"[Thread-{thread_id}] ❌ Error procesando cuadrante: {e}")
+
+# Worker
+
+def worker(q, thread_id):
+    print(f"[Thread-{thread_id}] Iniciando")
     driver = iniciar_driver()
-    
+
     while not q.empty():
         lat, lng = q.get()
         try:
-            procesar_cuadrante(driver, lat, lng, thread_id, lock)
+            procesar_cuadrante(driver, lat, lng, thread_id)
         except Exception as e:
             print(f"[Thread-{thread_id}] ❌ Error grave: {e}")
         finally:
             q.task_done()
-    
+
     driver.quit()
-    print(f"[Thread-{thread_id}] Finalizando worker")
+    print(f"[Thread-{thread_id}] Finalizado")
 
 # Main
-if __name__ == "__main__":
-    top, bottom = -33.3, -33.7
-    left, right = -71.0, -70.3
-    filas, columnas = 30, 30
 
-    cuadrantes = generar_cuadrantes(top, bottom, left, right, filas, columnas)
-    
-    # Crear cola de trabajo
+if __name__ == "__main__":
+    cuadrantes = generar_cuadrantes(TOP, BOTTOM, LEFT, RIGHT, FILAS, COLUMNAS)
+
     q = Queue()
     for cuadrante in cuadrantes:
         q.put(cuadrante)
 
-    # Crear lock para acceso seguro al CSV
-    lock = threading.Lock()
-
-    # Crear e iniciar threads
     threads = []
     for i in range(NUM_THREADS):
-        t = threading.Thread(target=worker, args=(q, i+1, lock))
+        t = threading.Thread(target=worker, args=(q, i+1))
         t.start()
         threads.append(t)
 
-    # Esperar a que todos los trabajos terminen
     q.join()
 
-    # Esperar a que todos los threads finalicen
     for t in threads:
         t.join()
 
-    print("✅ Todos los cuadrantes han sido procesados")
-    print(f"📊 Los resultados se han guardado en {CSV_FILENAME}")
+    producer.flush()
+    print("✅ Todos los cuadrantes procesados. Eventos enviados a Kafka.")
