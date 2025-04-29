@@ -12,16 +12,17 @@ from selenium.common.exceptions import StaleElementReferenceException
 from kafka import KafkaProducer
 
 # Configuración global
-NUM_THREADS = 4
+NUM_THREADS = 3
 TOPIC_NAME = "waze-events"
 KAFKA_SERVER = "kafka:9092"
-WINDOW_WIDTH = 16384  # Tamaño de la ventana del navegador en píxeles
+WINDOW_WIDTH = 16384
 WINDOW_HEIGHT = 8064
+EVENT_COUNT = 0
 
 # Configuración de cuadrantes
 top, bottom = -33.3, -33.7
 left, right = -71.0, -70.3
-filas, columnas = 2, 2
+filas, columnas = 60, 60
 
 # Crear Productor Kafka
 producer = KafkaProducer(
@@ -59,11 +60,8 @@ def extraer_pixeles_translate3d(style_text):
     return None, None
 
 def convertir_pixeles_a_latlon(x, y, lat_center, lng_center):
-    # Ajustar estos valores según la relación píxeles/grados en el nivel de zoom
-    lat_deg_per_px = 0.0001  # Grados de latitud por píxel
-    lng_deg_per_px = 0.0001  # Grados de longitud por píxel
-    
-    # Calcular las coordenadas exactas
+    lat_deg_per_px = 0.0001
+    lng_deg_per_px = 0.0001
     lat = lat_center - (y - WINDOW_HEIGHT/2) * lat_deg_per_px
     lng = lng_center + (x - WINDOW_WIDTH/2) * lng_deg_per_px
     return lat, lng
@@ -117,6 +115,8 @@ def procesar_cuadrante(driver, lat_center, lng_center, thread_id):
                         "event_type": tipo_evento
                     }
                     producer.send(TOPIC_NAME, evento)
+                    global EVENT_COUNT
+                    EVENT_COUNT += 1
                 else:
                     print(f"[Thread-{thread_id}] ❌ No se pudo obtener coordenadas para marcador {i}")
 
@@ -141,20 +141,22 @@ def worker(q, thread_id):
     driver.quit()
 
 if __name__ == "__main__":
-    cuadrantes = generar_cuadrantes(top, bottom, left, right, filas, columnas)
-    q = Queue()
-    for cuadrante in cuadrantes:
-        q.put(cuadrante)
+    while True:
+        cuadrantes = generar_cuadrantes(top, bottom, left, right, filas, columnas)
+        q = Queue()
+        for cuadrante in cuadrantes:
+            q.put(cuadrante)
 
-    threads = []
-    for i in range(NUM_THREADS):
-        t = threading.Thread(target=worker, args=(q, i+1))
-        t.start()
-        threads.append(t)
+        threads = []
+        for i in range(NUM_THREADS):
+            t = threading.Thread(target=worker, args=(q, i+1))
+            t.start()
+            threads.append(t)
 
-    q.join()
-    for t in threads:
-        t.join()
+        q.join()
+        for t in threads:
+            t.join()
 
-    producer.close()
-    print("✅ Scraper terminado y todos los eventos enviados a Kafka")
+        print(f"✅ Iteración de scraping terminada. Total eventos: {EVENT_COUNT}")
+
+        time.sleep(60)  

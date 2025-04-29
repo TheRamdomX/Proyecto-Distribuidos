@@ -8,6 +8,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    restart: always
 
   kafka:
     image: confluentinc/cp-kafka:7.0.1
@@ -20,6 +21,7 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    restart: always
 
   mysql:
     image: mysql:8.0
@@ -36,6 +38,7 @@ services:
 
   redis:
     image: redis:alpine
+    restart: always
     ports:
       - "6379:6379"
     volumes:
@@ -49,7 +52,7 @@ services:
       - kafka
     environment:
       - KAFKA_SERVER=kafka:9092
-    restart: on-failure
+    restart: always 
 
   storage:
     build:
@@ -58,7 +61,7 @@ services:
     depends_on:
       - kafka
       - mysql
-    restart: on-failure
+    restart: always 
 
   traffic-generator:
     build:
@@ -73,8 +76,7 @@ services:
       - MYSQL_USER=user
       - MYSQL_PASSWORD=password
       - MYSQL_DATABASE=waze_db
-    restart: on-failure
-
+    restart: always  
   cache-system-lru:
     build:
       context: .
@@ -87,7 +89,7 @@ services:
       - REDIS_HOST=redis
       - CACHE_POLICY=LRU
       - CACHE_CAPACITY=1000  
-    restart: on-failure
+    restart: always  
 
   cache-system-lfu:
     build:
@@ -101,7 +103,7 @@ services:
       - REDIS_HOST=redis
       - CACHE_POLICY=LFU
       - CACHE_CAPACITY=800   
-    restart: on-failure
+    restart: always  
 
 volumes:
   mysql_data:
