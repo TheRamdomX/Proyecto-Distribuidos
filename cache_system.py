@@ -5,9 +5,10 @@ import sys
 from kafka import KafkaConsumer
 import redis
 from datetime import datetime
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import threading
 import mysql.connector
+import random
 
 # Configuración
 KAFKA_SERVER = "kafka:9092"
@@ -20,8 +21,8 @@ MYSQL_HOST = "mysql"
 MYSQL_USER = "user"
 MYSQL_PASSWORD = "password"
 MYSQL_DATABASE = "waze_db"
-WAIT_INTERVAL = 5  
-MIN_EVENTS = 2000   
+WAIT_INTERVAL = 5  # segundos entre verificaciones
+MIN_EVENTS = 2000   # número mínimo de eventos para comenzar
 
 def connect_mysql():
     return mysql.connector.connect(
@@ -32,6 +33,7 @@ def connect_mysql():
     )
 
 def wait_for_initial_data():
+    """Espera hasta que haya suficientes eventos en la base de datos"""
     print("⏳ Esperando a que el scraper cargue datos iniciales...")
     while True:
         try:
@@ -56,11 +58,15 @@ class LRUCache:
     def __init__(self, capacity):
         self.capacity = capacity
         self.cache = OrderedDict()
+        self.hits = 0
+        self.misses = 0
     
     def get(self, key):
         if key not in self.cache:
+            self.misses += 1
             return None
         self.cache.move_to_end(key)
+        self.hits += 1
         return self.cache[key]
     
     def put(self, key, value):
@@ -69,107 +75,107 @@ class LRUCache:
         self.cache[key] = value
         if len(self.cache) > self.capacity:
             self.cache.popitem(last=False)
+    
+    def get_stats(self):
+        total = self.hits + self.misses
+        hit_rate = (self.hits / total) * 100 if total > 0 else 0
+        return {
+            "hits": self.hits,
+            "misses": self.misses,
+            "hit_rate": hit_rate,
+            "policy": "LRU",
+            "capacity": self.capacity,
+            "current_size": len(self.cache)
+        }
 
-class LFUCache:
+class RandomCache:
     def __init__(self, capacity):
         self.capacity = capacity
         self.cache = {}
-        self.freq = {}
-        self.min_freq = 0
+        self.keys = []
+        self.hits = 0
+        self.misses = 0
     
     def get(self, key):
         if key not in self.cache:
+            self.misses += 1
             return None
-        
-        self.freq[key] += 1
+        self.hits += 1
         return self.cache[key]
     
     def put(self, key, value):
-        if self.capacity == 0:
-            return
-        
-        if key in self.cache:
-            self.cache[key] = value
-            self.freq[key] += 1
-            return
-        
-        if len(self.cache) >= self.capacity:
-            min_key = min(self.freq, key=lambda k: self.freq[k])
-            del self.cache[min_key]
-            del self.freq[min_key]
-        
+        if key not in self.cache:
+            if len(self.keys) >= self.capacity:
+                evicted_key = random.choice(self.keys)
+                self.keys.remove(evicted_key)
+                del self.cache[evicted_key]
+            self.keys.append(key)
         self.cache[key] = value
-        self.freq[key] = 1
-        self.min_freq = 1
+    
+    def get_stats(self):
+        total = self.hits + self.misses
+        hit_rate = (self.hits / total) * 100 if total > 0 else 0
+        return {
+            "hits": self.hits,
+            "misses": self.misses,
+            "hit_rate": hit_rate,
+            "policy": "Random",
+            "capacity": self.capacity,
+            "current_size": len(self.cache)
+        }
 
-class CacheSystem:
-    def __init__(self, policy='LRU', capacity=1000):
+# Sistema de Caché Dual
+class DualCacheSystem:
+    def __init__(self, lru_capacity=1000, random_capacity=800):
         self.redis = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0)
-        self.policy = policy
-        self.capacity = capacity
-        
-        if policy == 'LRU':
-            self.cache = LRUCache(capacity)
-        elif policy == 'LFU':
-            self.cache = LFUCache(capacity)
-        else:
-            raise ValueError("Política de caché no soportada")
-        
-        self.hits = 0
-        self.misses = 0
+        self.lru_cache = LRUCache(lru_capacity)
+        self.random_cache = RandomCache(random_capacity)
         self.stats_lock = threading.Lock()
+        self.query_distribution = defaultdict(int)
     
     def process_query(self, query):
         event_id = query['event_id']
+        distribution = query.get('distribution', 'unknown')
         
-        cached = self.cache.get(event_id)
-        if cached:
-            with self.stats_lock:
-                self.hits += 1
-            return cached
-        
-        redis_data = self.redis.get(f"event:{event_id}")
-        if redis_data:
-            data = json.loads(redis_data)
-            self.cache.put(event_id, data)
-            with self.stats_lock:
-                self.hits += 1
-            return data
-        
-        # 3. Cache miss
         with self.stats_lock:
-            self.misses += 1
-        return None
+            self.query_distribution[distribution] += 1
+        
+        lru_result = self.lru_cache.get(event_id)
+        random_result = self.random_cache.get(event_id)
+        
+        if not lru_result and not random_result:
+            redis_data = self.redis.get(f"event:{event_id}")
+            if redis_data:
+                data = json.loads(redis_data)
+                self.lru_cache.put(event_id, data)
+                self.random_cache.put(event_id, data)
+                return data
+            return None
+        
+        return lru_result or random_result
     
     def update_cache(self, event):
         event_id = event['id']
         serialized = json.dumps(event)
         
-        self.cache.put(event_id, event)
-        self.redis.setex(f"event:{event_id}", 3600, serialized) 
+        self.lru_cache.put(event_id, event)
+        self.random_cache.put(event_id, event)
+        self.redis.setex(f"event:{event_id}", 3600, serialized)  # Expira en 1 hora
     
-    def get_cache_size(self):
-        """Obtiene el número de elementos actualmente en la caché local"""
-        if hasattr(self.cache, 'cache'):
-            return len(self.cache.cache)
-        return 0
-
-    def get_stats(self):
-        total = self.hits + self.misses
-        hit_rate = (self.hits / total) * 100 if total > 0 else 0
-        current_cache_size = self.get_cache_size()
+    def get_combined_stats(self):
+        lru_stats = self.lru_cache.get_stats()
+        random_stats = self.random_cache.get_stats()
+        
         return {
-            "hits": self.hits,
-            "misses": self.misses,
-            "hit_rate": hit_rate,
-            "policy": self.policy,
-            "capacity": self.capacity,
-            "current_size": current_cache_size
+            "timestamp": datetime.now().isoformat(),
+            "lru_cache": lru_stats,
+            "random_cache": random_stats,
+            "query_distribution": dict(self.query_distribution),
+            "redis_keys": self.redis.dbsize()
         }
 
-
-def run_cache_system(policy='LRU', capacity=1000):
-    print(f"🔄 Iniciando sistema de caché ({policy}, capacidad: {capacity})")
+def run_dual_cache_system():
+    print("🔄 Iniciando sistema de caché dual (LRU + Random)")
     
     wait_for_initial_data()
     
@@ -180,34 +186,52 @@ def run_cache_system(policy='LRU', capacity=1000):
         group_id='cache-group'
     )
     
-    cache = CacheSystem(policy=policy, capacity=capacity)
+    lru_capacity = int(os.getenv('LRU_CACHE_CAPACITY', '1000'))
+    random_capacity = int(os.getenv('RANDOM_CACHE_CAPACITY', '800'))
+    cache_system = DualCacheSystem(lru_capacity=lru_capacity, random_capacity=random_capacity)
     
     def stats_reporter():
         while True:
-            time.sleep(30)
-            stats = cache.get_stats()
-            print(f"\n📊 Estadísticas de Caché ({policy}):")
-            print(f"• Hit Rate: {stats['hit_rate']:.2f}%")
-            print(f"• Hits: {stats['hits']} | Misses: {stats['misses']}")
-            print(f"• Uso de Caché: {stats['current_size']}/{stats['capacity']} elementos")
-
+            time.sleep(5)
+            stats = cache_system.get_combined_stats()
+            
+            print("\n📊📊 Estadísticas Comparativas de Caché 📊📊")
+            print(f"⏰ Última actualización: {stats['timestamp']}")
+            print(f"🔑 Claves en Redis: {stats['redis_keys']}")
+            
+            print("\n🔵 LRU Cache:")
+            lru = stats['lru_cache']
+            print(f"• Hit Rate: {lru['hit_rate']:.2f}%")
+            print(f"• Hits: {lru['hits']} | Misses: {lru['misses']}")
+            print(f"• Uso: {lru['current_size']}/{lru['capacity']} elementos")
+            
+            print("\n🔴 Random Cache:")
+            rand = stats['random_cache']
+            print(f"• Hit Rate: {rand['hit_rate']:.2f}%")
+            print(f"• Hits: {rand['hits']} | Misses: {rand['misses']}")
+            print(f"• Uso: {rand['current_size']}/{rand['capacity']} elementos")
+            
+            print("\n📈 Distribución de Consultas:")
+            for dist, count in stats['query_distribution'].items():
+                print(f"• {dist}: {count} consultas")
     
     threading.Thread(target=stats_reporter, daemon=True).start()
     
     for message in consumer:
         query = message.value
-        print(f"📥 Consulta recibida: evento_id={query['event_id']} tipo={query['event_type']}")
-        result = cache.process_query(query)
+        print(f"📥 Consulta recibida: evento_id={query['event_id']} tipo={query['event_type']} dist={query.get('distribution', 'N/A')}")
+        
+        result = cache_system.process_query(query)
 
         if not result:
-            print(f"❌ Cache miss para evento {query['event_id']} — Buscando en Redis/MySQL...")
-
+            print(f"❌ Cache miss en ambos sistemas para evento {query['event_id']}")
+            
             redis_key = f"event:{query['event_id']}"
-            redis_data = cache.redis.get(redis_key)
+            redis_data = cache_system.redis.get(redis_key)
 
             if redis_data:
                 event = json.loads(redis_data)
-                cache.update_cache(event)
+                cache_system.update_cache(event)
                 print(f"✅ Evento {query['event_id']} cacheado desde Redis.")
             else:
                 try:
@@ -222,7 +246,7 @@ def run_cache_system(policy='LRU', capacity=1000):
                         if isinstance(event['timestamp'], datetime):
                             event['timestamp'] = event['timestamp'].isoformat()
 
-                        cache.update_cache(event)
+                        cache_system.update_cache(event)
                         print(f"✅ Evento {query['event_id']} cacheado desde MySQL.")
                     else:
                         print(f"⚠️ Evento {query['event_id']} no encontrado en MySQL.")
@@ -232,13 +256,5 @@ def run_cache_system(policy='LRU', capacity=1000):
         else:
             print(f"✅ Cache hit para evento {query['event_id']}")
 
-
-
 if __name__ == "__main__":
-    policy = os.getenv('CACHE_POLICY', 'LRU')
-    try:
-        capacity = int(os.getenv('CACHE_CAPACITY', '1000'))
-    except ValueError:
-        capacity = 1000
-    
-    run_cache_system(policy=policy, capacity=capacity)
+    run_dual_cache_system()

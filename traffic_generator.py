@@ -160,10 +160,10 @@ def run_traffic_generator():
                 events=events,
                 frequency_profile=profile,
                 pattern_name=pattern_name,
-                duration_sec=60
+                duration_sec=600
             )
             
-            time.sleep(60)
+            time.sleep(500)
 
 if __name__ == "__main__":
     run_traffic_generator()
