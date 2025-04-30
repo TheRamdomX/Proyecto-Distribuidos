@@ -10,7 +10,6 @@ import threading
 import mysql.connector
 import random
 
-# Configuración
 KAFKA_SERVER = "kafka:9092"
 QUERY_TOPIC = "traffic-queries"
 CACHE_TOPIC = "cache-updates"
@@ -21,8 +20,8 @@ MYSQL_HOST = "mysql"
 MYSQL_USER = "user"
 MYSQL_PASSWORD = "password"
 MYSQL_DATABASE = "waze_db"
-WAIT_INTERVAL = 5  # segundos entre verificaciones
-MIN_EVENTS = 2000   # número mínimo de eventos para comenzar
+WAIT_INTERVAL = 5  
+MIN_EVENTS = 10000   
 
 def connect_mysql():
     return mysql.connector.connect(
@@ -33,7 +32,6 @@ def connect_mysql():
     )
 
 def wait_for_initial_data():
-    """Espera hasta que haya suficientes eventos en la base de datos"""
     print("⏳ Esperando a que el scraper cargue datos iniciales...")
     while True:
         try:
@@ -124,9 +122,8 @@ class RandomCache:
             "current_size": len(self.cache)
         }
 
-# Sistema de Caché Dual
 class DualCacheSystem:
-    def __init__(self, lru_capacity=1000, random_capacity=800):
+    def __init__(self, lru_capacity=5000, random_capacity=5000):
         self.redis = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0)
         self.lru_cache = LRUCache(lru_capacity)
         self.random_cache = RandomCache(random_capacity)
@@ -186,8 +183,8 @@ def run_dual_cache_system():
         group_id='cache-group'
     )
     
-    lru_capacity = int(os.getenv('LRU_CACHE_CAPACITY', '1000'))
-    random_capacity = int(os.getenv('RANDOM_CACHE_CAPACITY', '800'))
+    lru_capacity = 5000
+    random_capacity = 5000
     cache_system = DualCacheSystem(lru_capacity=lru_capacity, random_capacity=random_capacity)
     
     def stats_reporter():

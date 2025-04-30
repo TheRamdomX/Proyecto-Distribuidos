@@ -89,7 +89,6 @@ services:
       - KAFKA_SERVER=kafka:9092
       - REDIS_HOST=redis
       - CACHE_POLICY=LRU
-      - LRU_CACHE_CAPACITY=1500
     restart: always  
 
   cache-system-random:
@@ -103,7 +102,6 @@ services:
       - KAFKA_SERVER=kafka:9092
       - REDIS_HOST=redis
       - CACHE_POLICY=Random
-      - RANDOM_CACHE_CAPACITY=1500
     restart: always  
 
 volumes:

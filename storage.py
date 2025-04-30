@@ -3,7 +3,6 @@ import time
 import mysql.connector
 from kafka import KafkaConsumer
 
-# Configuración
 TOPIC_NAME = "waze-events"
 KAFKA_SERVER = "kafka:9092"
 MYSQL_HOST = "mysql"
@@ -11,8 +10,7 @@ MYSQL_USER = "user"
 MYSQL_PASSWORD = "password"
 MYSQL_DATABASE = "waze_db"
 
-# Conexión a MySQL
-def conectar_mysql():
+def conect():
     max_retries = 5
     retry_delay = 5
     
@@ -48,7 +46,6 @@ def crear_tabla(cursor):
         print(f"⚠️ Error creando tabla: {err}")
         raise
 
-# Consumidor de Kafka
 consumer = KafkaConsumer(
     TOPIC_NAME,
     bootstrap_servers=[KAFKA_SERVER],
@@ -60,28 +57,15 @@ consumer = KafkaConsumer(
 
 print("⏳ Conectando a MySQL...")
 try:
-    conn = conectar_mysql()
+    conn = conect()
     cursor = conn.cursor()
     
-    # Verificar si la base de datos existe
     cursor.execute("SHOW TABLES LIKE 'events'")
     result = cursor.fetchone()
-    
-    if not result:
-        print("🔍 La tabla 'events' no existe, creándola...")
-        crear_tabla(cursor)
-    else:
-        print("🔍 La tabla 'events' ya existe")
         
-    # Verificar las columnas de la tabla
     cursor.execute("DESCRIBE events")
     columns = [column[0] for column in cursor.fetchall()]
-    required_columns = {'timestamp', 'latitude', 'longitude', 'event_type'}
-    
-    if not required_columns.issubset(set(columns)):
-        print("⚠️ Las columnas de la tabla no coinciden, recreando tabla...")
-        cursor.execute("DROP TABLE IF EXISTS events")
-        crear_tabla(cursor)
+    req_columns = {'timestamp', 'latitude', 'longitude', 'event_type'}
     
     print("✅ Conectado a Kafka, esperando eventos...")
     

@@ -11,20 +11,17 @@ from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import StaleElementReferenceException
 from kafka import KafkaProducer
 
-# Configuración global
-NUM_THREADS = 3
+NUM_THREADS = 8
 TOPIC_NAME = "waze-events"
 KAFKA_SERVER = "kafka:9092"
 WINDOW_WIDTH = 16384
 WINDOW_HEIGHT = 8064
 EVENT_COUNT = 0
 
-# Configuración de cuadrantes
 top, bottom = -33.3, -33.7
 left, right = -71.0, -70.3
-filas, columnas = 60, 60
+filas, columnas = 300, 300
 
-# Crear Productor Kafka
 producer = KafkaProducer(
     bootstrap_servers=KAFKA_SERVER,
     value_serializer=lambda v: json.dumps(v).encode('utf-8')

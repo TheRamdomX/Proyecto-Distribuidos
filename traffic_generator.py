@@ -14,7 +14,7 @@ MYSQL_PASSWORD = "password"
 MYSQL_DATABASE = "waze_db"
 QUERY_TOPIC = "traffic-queries"
 WAIT_INTERVAL = 5  
-MIN_EVENTS = 2000    
+MIN_EVENTS = 10000    
 
 def connect_mysql():
     return mysql.connector.connect(
@@ -116,7 +116,7 @@ def generate_traffic(events, frequency_profile, pattern_name, duration_sec=60):
         producer.send(QUERY_TOPIC, query)
         query_count += 1
         print(f"📤 Consulta {query_count}: Evento {event['id']} ({event['event_type']})") 
-        time.sleep(0.01)  
+        time.sleep(0.0001)  
     
     print(f"✅ Fin patrón {pattern_name}. Total consultas: {query_count}")
     return query_count
@@ -149,8 +149,8 @@ def run_traffic_generator():
         print(f"• Evento {eid}: Peso {uniform_profile[eid]['weight']:.6f}")
     
     patterns = [
-        ("Uniforme", uniform_profile),
-        ("Logarítmica", log_profile)
+        ("uniform", uniform_profile),
+        ("logarithmic", log_profile)
     ]
     
     while True:
@@ -160,7 +160,7 @@ def run_traffic_generator():
                 events=events,
                 frequency_profile=profile,
                 pattern_name=pattern_name,
-                duration_sec=600
+                duration_sec=900 # 15 minutos
             )
             
             time.sleep(500)
