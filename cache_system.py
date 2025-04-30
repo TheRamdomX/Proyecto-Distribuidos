@@ -1,7 +1,5 @@
 import json
 import time
-import os
-import sys
 from kafka import KafkaConsumer
 import redis
 from datetime import datetime
@@ -10,6 +8,7 @@ import threading
 import mysql.connector
 import random
 
+# Configuracion
 KAFKA_SERVER = "kafka:9092"
 QUERY_TOPIC = "traffic-queries"
 CACHE_TOPIC = "cache-updates"
@@ -21,8 +20,10 @@ MYSQL_USER = "user"
 MYSQL_PASSWORD = "password"
 MYSQL_DATABASE = "waze_db"
 WAIT_INTERVAL = 5  
-MIN_EVENTS = 10000   
+# Eventos minimos para iniciar el generador de tráfico
+MIN_EVENTS = 100000
 
+# Conexion MySQL
 def connect_mysql():
     return mysql.connector.connect(
         host=MYSQL_HOST,
@@ -31,6 +32,7 @@ def connect_mysql():
         database=MYSQL_DATABASE
     )
 
+# Esperar a que el scraper cargue datos iniciales (ver parametro MIN_EVENTS)
 def wait_for_initial_data():
     print("⏳ Esperando a que el scraper cargue datos iniciales...")
     while True:
@@ -52,13 +54,16 @@ def wait_for_initial_data():
             print(f"⚠️ Error verificando datos iniciales: {e}")
             time.sleep(WAIT_INTERVAL)
 
+# Clase de caché LRU
 class LRUCache:
+    # Inicializa la caché con una capacidad dada
     def __init__(self, capacity):
         self.capacity = capacity
         self.cache = OrderedDict()
         self.hits = 0
         self.misses = 0
     
+    # Obtiene un elemento de la caché
     def get(self, key):
         if key not in self.cache:
             self.misses += 1
@@ -67,6 +72,7 @@ class LRUCache:
         self.hits += 1
         return self.cache[key]
     
+    # Agrega un elemento a la caché
     def put(self, key, value):
         if key in self.cache:
             self.cache.move_to_end(key)
@@ -74,6 +80,7 @@ class LRUCache:
         if len(self.cache) > self.capacity:
             self.cache.popitem(last=False)
     
+    # Obtiene estadísticas de la caché
     def get_stats(self):
         total = self.hits + self.misses
         hit_rate = (self.hits / total) * 100 if total > 0 else 0
@@ -86,7 +93,9 @@ class LRUCache:
             "current_size": len(self.cache)
         }
 
+# Clase de caché aleatoria
 class RandomCache:
+    # Inicializa la caché con una capacidad dada
     def __init__(self, capacity):
         self.capacity = capacity
         self.cache = {}
@@ -94,6 +103,7 @@ class RandomCache:
         self.hits = 0
         self.misses = 0
     
+    # Obtiene un elemento de la caché
     def get(self, key):
         if key not in self.cache:
             self.misses += 1
@@ -101,6 +111,7 @@ class RandomCache:
         self.hits += 1
         return self.cache[key]
     
+    # Agrega un elemento a la caché
     def put(self, key, value):
         if key not in self.cache:
             if len(self.keys) >= self.capacity:
@@ -110,6 +121,7 @@ class RandomCache:
             self.keys.append(key)
         self.cache[key] = value
     
+    # Obtiene estadísticas de la caché
     def get_stats(self):
         total = self.hits + self.misses
         hit_rate = (self.hits / total) * 100 if total > 0 else 0
@@ -122,14 +134,17 @@ class RandomCache:
             "current_size": len(self.cache)
         }
 
+# Clase del sistema de caché dual
 class DualCacheSystem:
-    def __init__(self, lru_capacity=5000, random_capacity=5000):
+    # Inicializa el sistema de caché dual con capacidades para LRU y aleatoria
+    def __init__(self, lru_capacity, random_capacity):
         self.redis = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0)
         self.lru_cache = LRUCache(lru_capacity)
         self.random_cache = RandomCache(random_capacity)
         self.stats_lock = threading.Lock()
         self.query_distribution = defaultdict(int)
     
+    # Procesa una consulta y devuelve el resultado
     def process_query(self, query):
         event_id = query['event_id']
         distribution = query.get('distribution', 'unknown')
@@ -140,6 +155,7 @@ class DualCacheSystem:
         lru_result = self.lru_cache.get(event_id)
         random_result = self.random_cache.get(event_id)
         
+        # Si no se encuentra en ninguna caché, buscar en Redis
         if not lru_result and not random_result:
             redis_data = self.redis.get(f"event:{event_id}")
             if redis_data:
@@ -151,6 +167,7 @@ class DualCacheSystem:
         
         return lru_result or random_result
     
+    # Actualiza la caché con un nuevo evento
     def update_cache(self, event):
         event_id = event['id']
         serialized = json.dumps(event)
@@ -159,6 +176,7 @@ class DualCacheSystem:
         self.random_cache.put(event_id, event)
         self.redis.setex(f"event:{event_id}", 3600, serialized)  # Expira en 1 hora
     
+    # Obtiene estadísticas combinadas de ambas cachés
     def get_combined_stats(self):
         lru_stats = self.lru_cache.get_stats()
         random_stats = self.random_cache.get_stats()
@@ -171,11 +189,13 @@ class DualCacheSystem:
             "redis_keys": self.redis.dbsize()
         }
 
+# Función principal: inicia el sistema de caché dual y muestra estadísticas
 def run_dual_cache_system():
     print("🔄 Iniciando sistema de caché dual (LRU + Random)")
     
     wait_for_initial_data()
     
+    # Configuración del consumidor de Kafka
     consumer = KafkaConsumer(
         QUERY_TOPIC,
         bootstrap_servers=[KAFKA_SERVER],
@@ -187,6 +207,7 @@ def run_dual_cache_system():
     random_capacity = 5000
     cache_system = DualCacheSystem(lru_capacity=lru_capacity, random_capacity=random_capacity)
     
+    # Iniciar el hilo para mostrar estadísticas
     def stats_reporter():
         while True:
             time.sleep(5)
@@ -214,22 +235,26 @@ def run_dual_cache_system():
     
     threading.Thread(target=stats_reporter, daemon=True).start()
     
+    # Procesar mensajes de Kafka
     for message in consumer:
         query = message.value
         print(f"📥 Consulta recibida: evento_id={query['event_id']} tipo={query['event_type']} dist={query.get('distribution', 'N/A')}")
         
         result = cache_system.process_query(query)
 
+        # Si no se encuentra en ninguna caché, buscar en Redis y MySQL
         if not result:
             print(f"❌ Cache miss en ambos sistemas para evento {query['event_id']}")
             
             redis_key = f"event:{query['event_id']}"
             redis_data = cache_system.redis.get(redis_key)
 
+            # Si se encuentra en Redis, actualizar la caché
             if redis_data:
                 event = json.loads(redis_data)
                 cache_system.update_cache(event)
                 print(f"✅ Evento {query['event_id']} cacheado desde Redis.")
+            # Si no se encuentra en Redis, buscar en MySQL
             else:
                 try:
                     conn = connect_mysql()
@@ -238,7 +263,7 @@ def run_dual_cache_system():
                     event = cursor.fetchone()
                     cursor.close()
                     conn.close()
-
+                    # Si se encuentra el evento, actualizar la caché
                     if event:
                         if isinstance(event['timestamp'], datetime):
                             event['timestamp'] = event['timestamp'].isoformat()
@@ -247,9 +272,9 @@ def run_dual_cache_system():
                         print(f"✅ Evento {query['event_id']} cacheado desde MySQL.")
                     else:
                         print(f"⚠️ Evento {query['event_id']} no encontrado en MySQL.")
-
                 except Exception as e:
                     print(f"⚠️ Error buscando evento {query['event_id']} en MySQL: {e}")
+        # Si se encuentra en alguna caché, imprimir el resultado
         else:
             print(f"✅ Cache hit para evento {query['event_id']}")
 

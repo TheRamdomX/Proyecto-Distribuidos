@@ -3,6 +3,7 @@ import time
 import mysql.connector
 from kafka import KafkaConsumer
 
+# Configuracion
 TOPIC_NAME = "waze-events"
 KAFKA_SERVER = "kafka:9092"
 MYSQL_HOST = "mysql"
@@ -10,6 +11,7 @@ MYSQL_USER = "user"
 MYSQL_PASSWORD = "password"
 MYSQL_DATABASE = "waze_db"
 
+# conexion a MySQL
 def conect():
     max_retries = 5
     retry_delay = 5
@@ -30,6 +32,7 @@ def conect():
             else:
                 raise
 
+# Crear tabla si no existe
 def crear_tabla(cursor):
     try:
         cursor.execute("""
@@ -46,6 +49,7 @@ def crear_tabla(cursor):
         print(f"⚠️ Error creando tabla: {err}")
         raise
 
+# Crear consumidor de Kafka
 consumer = KafkaConsumer(
     TOPIC_NAME,
     bootstrap_servers=[KAFKA_SERVER],
@@ -57,6 +61,7 @@ consumer = KafkaConsumer(
 
 print("⏳ Conectando a MySQL...")
 try:
+    # Conectar a MySQL
     conn = conect()
     cursor = conn.cursor()
     
@@ -69,6 +74,7 @@ try:
     
     print("✅ Conectado a Kafka, esperando eventos...")
     
+    # Almacenar eventos en MySQL
     for message in consumer:
         evento = message.value
         print(f"📥 Evento recibido: {evento}")
