@@ -35,6 +35,11 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # redis:
   #   image: redis:alpine
@@ -68,9 +73,11 @@ services:
       context: ./Pig
       dockerfile: Dockerfile
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     volumes:
       - ./Pig/results:/pig/results
+      - ./Pig/data:/pig/data
     restart: always
 
   # traffic-generator:

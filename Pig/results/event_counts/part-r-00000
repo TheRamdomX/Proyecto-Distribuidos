@@ -1,0 +1,91 @@
+Buin,PELIGRO,3
+Buin,POLICIA,2
+Macul,PELIGRO,3
+Macul,POLICIA,10
+Macul,CAMINO CORTADO,2
+Renca,PELIGRO,12
+Renca,CAMINO CORTADO,6
+Maipú,PELIGRO,43
+Maipú,CAMINO CORTADO,46
+Pirque,PELIGRO,8
+Pirque,POLICIA,5
+Ñuñoa,PELIGRO,2
+Ñuñoa,POLICIA,1
+La Reina,PELIGRO,3
+La Reina,CAMINO CORTADO,6
+Lo Prado,PELIGRO,2
+Lo Prado,POLICIA,4
+Pudahuel,PELIGRO,22
+Pudahuel,POLICIA,5
+Pudahuel,CAMINO CORTADO,27
+Recoleta,PELIGRO,5
+Recoleta,POLICIA,4
+Santiago,PELIGRO,24
+Santiago,POLICIA,11
+Santiago,CAMINO CORTADO,4
+Vitacura,PELIGRO,1
+Vitacura,CAMINO CORTADO,2
+Cerrillos,PELIGRO,6
+Cerrillos,POLICIA,2
+Conchalí,PELIGRO,4
+Conchalí,CAMINO CORTADO,90
+El Bosque,PELIGRO,6
+El Bosque,POLICIA,3
+La Granja,PELIGRO,4
+Lo Espejo,PELIGRO,1
+Lo Espejo,POLICIA,3
+Quilicura,PELIGRO,12
+Quilicura,POLICIA,5
+Quilicura,ACCIDENTE,2
+Quilicura,CAMINO CORTADO,1
+Huechuraba,PELIGRO,14
+Huechuraba,POLICIA,2
+La Florida,PELIGRO,27
+La Florida,POLICIA,4
+La Florida,ACCIDENTE,2
+La Florida,CAMINO CORTADO,11
+La Pintana,PELIGRO,16
+La Pintana,POLICIA,2
+La Pintana,ACCIDENTE,1
+Las Condes,PELIGRO,18
+Las Condes,POLICIA,7
+Las Condes,CAMINO CORTADO,2
+San Miguel,PELIGRO,4
+San Miguel,ACCIDENTE,1
+San Ramón,PELIGRO,1
+San Ramón,POLICIA,1
+Cerro Navia,PELIGRO,3
+Cerro Navia,CAMINO CORTADO,17
+La Cisterna,PELIGRO,5
+La Cisterna,POLICIA,1
+La Cisterna,CAMINO CORTADO,8
+Peñalolén,PELIGRO,23
+Peñalolén,POLICIA,1
+Peñalolén,ACCIDENTE,1
+Peñalolén,CAMINO CORTADO,16
+Providencia,PELIGRO,16
+Providencia,POLICIA,7
+Providencia,CAMINO CORTADO,9
+Puente Alto,PELIGRO,30
+Puente Alto,POLICIA,10
+Puente Alto,ACCIDENTE,1
+Lo Barnechea,PELIGRO,3
+Lo Barnechea,ACCIDENTE,1
+San Bernardo,PELIGRO,47
+San Bernardo,POLICIA,11
+San Joaquín,PELIGRO,6
+San Joaquín,POLICIA,2
+Independencia,PELIGRO,9
+Independencia,POLICIA,3
+Padre Hurtado,PELIGRO,1
+Quinta Normal,PELIGRO,6
+Quinta Normal,CAMINO CORTADO,1
+Calera de Tango,POLICIA,1
+Estación Central,PELIGRO,29
+Estación Central,POLICIA,6
+Estación Central,ACCIDENTE,2
+Estación Central,CAMINO CORTADO,1
+San José de Maipo,PELIGRO,2
+Pedro Aguirre Cerda,PELIGRO,3
+Pedro Aguirre Cerda,POLICIA,1
+Pedro Aguirre Cerda,ACCIDENTE,1
