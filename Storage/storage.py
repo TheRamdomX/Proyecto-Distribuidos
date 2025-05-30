@@ -41,7 +41,8 @@ def crear_tabla(cursor):
                 timestamp DATETIME NOT NULL,
                 latitude DOUBLE NOT NULL,
                 longitude DOUBLE NOT NULL,
-                event_type VARCHAR(255) NOT NULL
+                event_type VARCHAR(255) NOT NULL,
+                comuna VARCHAR(255) NOT NULL
             )
         """)
         print("✅ Tabla 'events' creada/verificada")
@@ -81,14 +82,15 @@ try:
 
         try:
             sql = """
-                INSERT INTO events (timestamp, latitude, longitude, event_type) 
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO events (timestamp, latitude, longitude, event_type, comuna) 
+                VALUES (%s, %s, %s, %s, %s)
             """
             val = (
                 evento['timestamp'],
                 float(evento['latitude']),
                 float(evento['longitude']),
-                evento['event_type']
+                evento['event_type'],
+                evento.get('comuna', 'Desconocida')
             )
             
             cursor.execute(sql, val)

@@ -1,0 +1,6 @@
+selenium==4.15.2
+kafka-python==2.0.2
+numpy==1.24.3
+fiona==1.9.5
+geopandas==0.13.2
+shapely==2.0.1

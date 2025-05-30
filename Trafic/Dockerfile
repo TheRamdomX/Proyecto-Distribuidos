@@ -2,8 +2,8 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-COPY requirements_traffic.txt .
-RUN pip install --no-cache-dir -r requirements_traffic.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY traffic_generator.py .
 

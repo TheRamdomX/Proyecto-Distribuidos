@@ -36,18 +36,18 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
-  redis:
-    image: redis:alpine
-    restart: always
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
+  # redis:
+  #   image: redis:alpine
+  #   restart: always
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
 
   scraper:
     build:
-      context: .
-      dockerfile: Dockerfile.scraper
+      context: ./Scraper
+      dockerfile: Dockerfile
     depends_on:
       - kafka
     environment:
@@ -56,54 +56,64 @@ services:
 
   storage:
     build:
-      context: .
-      dockerfile: Dockerfile.storage
+      context: ./Storage
+      dockerfile: Dockerfile
     depends_on:
       - kafka
       - mysql
     restart: always 
 
-  traffic-generator:
+  pig-processor:
     build:
-      context: .
-      dockerfile: Dockerfile.traffic
+      context: ./Pig
+      dockerfile: Dockerfile
     depends_on:
-      - kafka
       - mysql
-    environment:
-      - KAFKA_SERVER=kafka:9092
-      - MYSQL_HOST=mysql
-      - MYSQL_USER=user
-      - MYSQL_PASSWORD=password
-      - MYSQL_DATABASE=waze_db
-    restart: always  
+    volumes:
+      - ./Pig/results:/pig/results
+    restart: always
 
-  cache-system-lru:
-    build:
-      context: .
-      dockerfile: Dockerfile.cache
-    depends_on:
-      - kafka
-      - redis
-    environment:
-      - KAFKA_SERVER=kafka:9092
-      - REDIS_HOST=redis
-      - CACHE_POLICY=LRU
-    restart: always  
+  # traffic-generator:
+  #   build:
+  #     context: ./Trafic
+  #     dockerfile: Dockerfile
+  #   depends_on:
+  #     - kafka
+  #     - mysql
+  #   environment:
+  #     - KAFKA_SERVER=kafka:9092
+  #     - MYSQL_HOST=mysql
+  #     - MYSQL_USER=user
+  #     - MYSQL_PASSWORD=password
+  #     - MYSQL_DATABASE=waze_db
+  #   restart: always  
 
-  cache-system-random:
-    build:
-      context: .
-      dockerfile: Dockerfile.cache
-    depends_on:
-      - kafka
-      - redis
-    environment:
-      - KAFKA_SERVER=kafka:9092
-      - REDIS_HOST=redis
-      - CACHE_POLICY=Random
-    restart: always  
+  # cache-system-lru:
+  #   build:
+  #     context: ./Cache
+  #     dockerfile: Dockerfile
+  #   depends_on:
+  #     - kafka
+  #     - redis
+  #   environment:
+  #     - KAFKA_SERVER=kafka:9092
+  #     - REDIS_HOST=redis
+  #     - CACHE_POLICY=LRU
+  #   restart: always  
+
+  # cache-system-random:
+  #   build:
+  #     context: ./Cache
+  #     dockerfile: Dockerfile
+  #   depends_on:
+  #     - kafka
+  #     - redis
+  #   environment:
+  #     - KAFKA_SERVER=kafka:9092
+  #     - REDIS_HOST=redis
+  #     - CACHE_POLICY=Random
+  #   restart: always  
 
 volumes:
   mysql_data:
-  redis_data:
+  # redis_data:

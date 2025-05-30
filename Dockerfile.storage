@@ -1,8 +1,0 @@
-FROM python:3.11-slim
-
-COPY requirements_storage.txt .
-RUN pip install --no-cache-dir -r requirements_storage.txt
-
-COPY storage.py .
-
-CMD ["python", "storage.py"]
