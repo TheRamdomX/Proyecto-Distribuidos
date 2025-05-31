@@ -1,91 +1,102 @@
-Buin,PELIGRO,3
+Buin,PELIGRO,4
 Buin,POLICIA,2
-Macul,PELIGRO,3
-Macul,POLICIA,10
-Macul,CAMINO CORTADO,2
-Renca,PELIGRO,12
-Renca,CAMINO CORTADO,6
-Maipú,PELIGRO,43
-Maipú,CAMINO CORTADO,46
-Pirque,PELIGRO,8
+Macul,PELIGRO,4
+Macul,POLICIA,11
+Macul,CAMINO CORTADO,3
+Renca,PELIGRO,19
+Renca,ACCIDENTE,1
+Renca,CAMINO CORTADO,9
+Maipú,PELIGRO,66
+Maipú,POLICIA,4
+Maipú,CAMINO CORTADO,70
+Pirque,PELIGRO,10
 Pirque,POLICIA,5
-Ñuñoa,PELIGRO,2
-Ñuñoa,POLICIA,1
-La Reina,PELIGRO,3
-La Reina,CAMINO CORTADO,6
-Lo Prado,PELIGRO,2
+Ñuñoa,PELIGRO,8
+Ñuñoa,POLICIA,3
+Ñuñoa,CAMINO CORTADO,8
+La Reina,PELIGRO,6
+La Reina,CAMINO CORTADO,9
+Lo Prado,PELIGRO,4
 Lo Prado,POLICIA,4
-Pudahuel,PELIGRO,22
-Pudahuel,POLICIA,5
-Pudahuel,CAMINO CORTADO,27
-Recoleta,PELIGRO,5
-Recoleta,POLICIA,4
-Santiago,PELIGRO,24
-Santiago,POLICIA,11
-Santiago,CAMINO CORTADO,4
-Vitacura,PELIGRO,1
-Vitacura,CAMINO CORTADO,2
-Cerrillos,PELIGRO,6
+Lo Prado,CAMINO CORTADO,1
+Pudahuel,PELIGRO,29
+Pudahuel,POLICIA,7
+Pudahuel,CAMINO CORTADO,39
+Recoleta,PELIGRO,9
+Recoleta,POLICIA,7
+Santiago,PELIGRO,31
+Santiago,POLICIA,18
+Santiago,ACCIDENTE,1
+Santiago,CAMINO CORTADO,8
+Vitacura,PELIGRO,5
+Vitacura,CAMINO CORTADO,3
+Cerrillos,PELIGRO,11
 Cerrillos,POLICIA,2
-Conchalí,PELIGRO,4
-Conchalí,CAMINO CORTADO,90
-El Bosque,PELIGRO,6
-El Bosque,POLICIA,3
-La Granja,PELIGRO,4
+Conchalí,PELIGRO,10
+Conchalí,CAMINO CORTADO,135
+El Bosque,PELIGRO,7
+El Bosque,POLICIA,6
+La Granja,PELIGRO,6
+La Granja,POLICIA,1
+La Granja,ACCIDENTE,1
 Lo Espejo,PELIGRO,1
 Lo Espejo,POLICIA,3
-Quilicura,PELIGRO,12
+Quilicura,PELIGRO,16
 Quilicura,POLICIA,5
 Quilicura,ACCIDENTE,2
 Quilicura,CAMINO CORTADO,1
-Huechuraba,PELIGRO,14
+Huechuraba,PELIGRO,21
 Huechuraba,POLICIA,2
-La Florida,PELIGRO,27
-La Florida,POLICIA,4
+La Florida,PELIGRO,37
+La Florida,POLICIA,13
 La Florida,ACCIDENTE,2
-La Florida,CAMINO CORTADO,11
-La Pintana,PELIGRO,16
-La Pintana,POLICIA,2
+La Florida,CAMINO CORTADO,15
+La Pintana,PELIGRO,19
+La Pintana,POLICIA,3
 La Pintana,ACCIDENTE,1
-Las Condes,PELIGRO,18
-Las Condes,POLICIA,7
-Las Condes,CAMINO CORTADO,2
-San Miguel,PELIGRO,4
+Las Condes,PELIGRO,26
+Las Condes,POLICIA,11
+Las Condes,CAMINO CORTADO,3
+San Miguel,PELIGRO,6
+San Miguel,POLICIA,1
 San Miguel,ACCIDENTE,1
-San Ramón,PELIGRO,1
-San Ramón,POLICIA,1
+San Ramón,PELIGRO,2
+San Ramón,POLICIA,2
 Cerro Navia,PELIGRO,3
-Cerro Navia,CAMINO CORTADO,17
-La Cisterna,PELIGRO,5
+Cerro Navia,CAMINO CORTADO,24
+La Cisterna,PELIGRO,8
 La Cisterna,POLICIA,1
-La Cisterna,CAMINO CORTADO,8
-Peñalolén,PELIGRO,23
-Peñalolén,POLICIA,1
+La Cisterna,CAMINO CORTADO,18
+Peñalolén,PELIGRO,34
+Peñalolén,POLICIA,2
 Peñalolén,ACCIDENTE,1
-Peñalolén,CAMINO CORTADO,16
-Providencia,PELIGRO,16
-Providencia,POLICIA,7
-Providencia,CAMINO CORTADO,9
-Puente Alto,PELIGRO,30
-Puente Alto,POLICIA,10
-Puente Alto,ACCIDENTE,1
-Lo Barnechea,PELIGRO,3
+Peñalolén,CAMINO CORTADO,23
+Providencia,PELIGRO,25
+Providencia,POLICIA,9
+Providencia,CAMINO CORTADO,25
+Puente Alto,PELIGRO,37
+Puente Alto,POLICIA,11
+Puente Alto,ACCIDENTE,2
+Lo Barnechea,PELIGRO,8
 Lo Barnechea,ACCIDENTE,1
-San Bernardo,PELIGRO,47
-San Bernardo,POLICIA,11
-San Joaquín,PELIGRO,6
+San Bernardo,PELIGRO,61
+San Bernardo,POLICIA,13
+San Joaquín,PELIGRO,10
 San Joaquín,POLICIA,2
-Independencia,PELIGRO,9
+Independencia,PELIGRO,11
 Independencia,POLICIA,3
+Independencia,ACCIDENTE,1
 Padre Hurtado,PELIGRO,1
-Quinta Normal,PELIGRO,6
-Quinta Normal,CAMINO CORTADO,1
+Quinta Normal,PELIGRO,8
+Quinta Normal,POLICIA,1
+Quinta Normal,CAMINO CORTADO,3
 Calera de Tango,POLICIA,1
-Estación Central,PELIGRO,29
+Estación Central,PELIGRO,42
 Estación Central,POLICIA,6
 Estación Central,ACCIDENTE,2
-Estación Central,CAMINO CORTADO,1
-San José de Maipo,PELIGRO,2
-Pedro Aguirre Cerda,PELIGRO,3
+Estación Central,CAMINO CORTADO,2
+San José de Maipo,PELIGRO,3
+San José de Maipo,POLICIA,2
+Pedro Aguirre Cerda,PELIGRO,4
 Pedro Aguirre Cerda,POLICIA,1
 Pedro Aguirre Cerda,ACCIDENTE,1

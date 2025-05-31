@@ -68,6 +68,23 @@ services:
       - mysql
     restart: always 
 
+  filter:
+    build:
+      context: ./Filter
+      dockerfile: Dockerfile
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=waze_db
+    volumes:
+      - ./Filter/data:/filter/data
+      - ./Filter/results:/filter/results
+    restart: always
+
   pig-processor:
     build:
       context: ./Pig
