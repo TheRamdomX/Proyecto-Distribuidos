@@ -26,7 +26,7 @@ ENV CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gp
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY 13.geojson .
+COPY RM.geojson .
 COPY scraper.py .
 
 CMD ["python", "scraper.py"]

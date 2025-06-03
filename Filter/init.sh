@@ -1,21 +1,31 @@
 #!/bin/bash
 
-# Limpiar directorios de resultados anteriores
-rm -rf results/filtered_events/*
-
 # Crear directorios necesarios
-mkdir -p data results
+mkdir -p /filter/data
+mkdir -p /filter/results
 
-# Dar permisos necesarios
-chmod 777 data results
+# Exportar datos de MySQL a CSV
+echo "Exportando datos de MySQL a CSV..."
+mysql -h $MYSQL_HOST -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE -e "
+SELECT id, timestamp, latitude, longitude, event_type, comuna 
+FROM events 
+INTO OUTFILE '/var/lib/mysql-files/events.csv' 
+FIELDS TERMINATED BY ',' 
+LINES TERMINATED BY '\n';"
 
-# Exportar datos de MySQL a un archivo de texto con comas como separadores
-mysql -h mysql -u user -ppassword waze_db -e "SELECT * FROM events" | tr '\t' ',' > data/events.txt
+# Copiar el archivo al directorio de datos
+cp /var/lib/mysql-files/events.csv /filter/data/
 
-# Eliminar la primera línea (encabezado)
-sed -i '1d' data/events.txt
+# Asegurar permisos correctos
+chmod 644 /filter/data/events.csv
 
-# Asegurarse de que el archivo tenga los permisos correctos
-chmod 644 data/events.txt
-
-echo "✅ Directorios inicializados y datos exportados correctamente" 
+# Verificar que el archivo existe
+if [ -f "/filter/data/events.csv" ]; then
+    echo "✅ Archivo CSV creado correctamente"
+    # Ejecutar script Pig
+    echo "Ejecutando script Pig..."
+    pig -x local filter_events.pig
+else
+    echo "❌ Error: No se pudo crear el archivo CSV"
+    exit 1
+fi 

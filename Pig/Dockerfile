@@ -1,36 +1,37 @@
 FROM openjdk:8-jdk
 
 # Instalar dependencias necesarias
-RUN apt-get update && apt-get install -y \
-    default-mysql-client \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y wget default-mysql-client && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# Instalar Apache Pig
-ENV PIG_VERSION=0.17.0
-ENV PIG_HOME=/opt/pig
-RUN wget https://dlcdn.apache.org/pig/pig-${PIG_VERSION}/pig-${PIG_VERSION}.tar.gz && \
-    tar -xzf pig-${PIG_VERSION}.tar.gz && \
-    mv pig-${PIG_VERSION} ${PIG_HOME} && \
-    rm pig-${PIG_VERSION}.tar.gz
+# Descargar e instalar Pig
+RUN wget https://dlcdn.apache.org/pig/pig-0.17.0/pig-0.17.0.tar.gz && \
+    tar -xzf pig-0.17.0.tar.gz && \
+    mv pig-0.17.0 /opt/pig && \
+    rm pig-0.17.0.tar.gz
 
-# Descargar Piggybank
-ENV PIGGYBANK_VERSION=0.17.0
-RUN mkdir -p /pig && wget https://repo1.maven.org/maven2/org/apache/pig/piggybank/${PIGGYBANK_VERSION}/piggybank-${PIGGYBANK_VERSION}.jar -O /pig/piggybank.jar
+# Descargar piggybank.jar
+RUN wget https://repo1.maven.org/maven2/org/apache/pig/piggybank/0.17.0/piggybank-0.17.0.jar -O /opt/pig/lib/piggybank.jar
 
 # Configurar variables de entorno
-ENV PATH=${PIG_HOME}/bin:${PATH}
+ENV PIG_HOME=/opt/pig
+ENV PATH=$PATH:$PIG_HOME/bin
 
-# Crear directorios necesarios
-WORKDIR /pig
-RUN mkdir -p results data
+# Crear directorios necesarios y establecer permisos
+RUN mkdir -p /pig/data /pig/results /var/lib/mysql-files && \
+    chmod -R 777 /pig/data /pig/results /var/lib/mysql-files
 
 # Copiar scripts
-COPY process_events.pig .
-COPY export_events.sh .
+COPY process_events.pig /pig/
+COPY export_events.sh /pig/
 
-# Dar permisos de ejecución al script de exportación
-RUN chmod +x export_events.sh
+# Dar permisos de ejecución al script
+RUN chmod +x /pig/export_events.sh
 
-# Comando por defecto
-CMD ["/bin/bash", "-c", "./export_events.sh && pig -x local process_events.pig"] 
+# Establecer directorio de trabajo
+WORKDIR /pig
+
+# Ejecutar script de exportación
+CMD ["/pig/export_events.sh"] 

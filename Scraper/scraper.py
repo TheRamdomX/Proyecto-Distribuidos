@@ -14,7 +14,7 @@ from kafka import KafkaProducer
 import geopandas as gpd
 from shapely.geometry import Point
 
-comunas_rm = gpd.read_file("13.geojson")
+comunas_rm = gpd.read_file("RM.geojson")
 comunas_rm = comunas_rm.to_crs(epsg=4326)
 
 def get_comuna_from_coords(lat, lon):
@@ -25,7 +25,7 @@ def get_comuna_from_coords(lat, lon):
     return None
 
 # Configuracion
-NUM_THREADS = 5
+NUM_THREADS = 15
 TOPIC_NAME = "waze-events"
 KAFKA_SERVER = "kafka:9092"
 WINDOW_WIDTH = 1024
@@ -36,7 +36,7 @@ EVENT_COUNT = 0
 # Coordenadas y cuadrantes del scrapeo
 top, bottom = -33.2, -33.7
 left, right = -70.8, -70.3
-filas, columnas = 50, 50
+filas, columnas = 45, 45
 
 # Configuracion del productor de Kafka
 producer = KafkaProducer(

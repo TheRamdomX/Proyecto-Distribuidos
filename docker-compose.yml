@@ -31,23 +31,17 @@ services:
       MYSQL_ROOT_PASSWORD: rootpass
       MYSQL_USER: user
       MYSQL_PASSWORD: password
+    command: --secure-file-priv=/var/lib/mysql-files
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - mysql_files:/var/lib/mysql-files
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # redis:
-  #   image: redis:alpine
-  #   restart: always
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
 
   scraper:
     build:
@@ -68,7 +62,7 @@ services:
       - mysql
     restart: always 
 
-  filter:
+  pig-filter:
     build:
       context: ./Filter
       dockerfile: Dockerfile
@@ -77,26 +71,41 @@ services:
         condition: service_healthy
     environment:
       - MYSQL_HOST=mysql
-      - MYSQL_USER=user
-      - MYSQL_PASSWORD=password
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=rootpass
       - MYSQL_DATABASE=waze_db
     volumes:
       - ./Filter/data:/filter/data
       - ./Filter/results:/filter/results
-    restart: always
+      - mysql_files:/var/lib/mysql-files
+    restart: "no"
 
   pig-processor:
     build:
       context: ./Pig
       dockerfile: Dockerfile
     depends_on:
-      mysql:
-        condition: service_healthy
+      pig-filter:
+        condition: service_completed_successfully
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=rootpass
+      - MYSQL_DATABASE=waze_db
     volumes:
       - ./Pig/results:/pig/results
-      - ./Pig/data:/pig/data
-    restart: always
+      - ./Filter/results:/pig/data
+      - mysql_files:/var/lib/mysql-files
+    restart: "no"
 
+  # redis:
+  #   image: redis:alpine
+  #   restart: always
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  
   # traffic-generator:
   #   build:
   #     context: ./Trafic
@@ -140,4 +149,5 @@ services:
 
 volumes:
   mysql_data:
+  mysql_files:
   # redis_data:
