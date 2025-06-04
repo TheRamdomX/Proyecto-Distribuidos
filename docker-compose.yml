@@ -94,7 +94,7 @@ services:
       - MYSQL_DATABASE=waze_db
     volumes:
       - ./Pig/results:/pig/results
-      - ./Filter/results:/pig/data
+      - ./Filter/results:/filter/results
       - mysql_files:/var/lib/mysql-files
     restart: "no"
 

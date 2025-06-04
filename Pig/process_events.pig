@@ -10,10 +10,13 @@ rmf /pig/results/historical_analysis;
 events = LOAD '/pig/data/events.csv' USING PigStorage(',') AS 
     (id:int, timestamp:chararray, latitude:double, longitude:double, event_type:chararray, comuna:chararray);
 
+-- Filtrar la primera línea (encabezados) usando una condición más robusta
+events = FILTER events BY (chararray)id != 'id' AND (chararray)id != '';
+
 -- Convertir timestamp a Unix timestamp para análisis temporal
 events_with_ts = FOREACH events GENERATE
     id,
-    ToUnixTime(ToDate(timestamp, 'yyyy-MM-dd HH:mm:ss')) as unix_ts,
+    (long)timestamp as unix_ts,
     latitude,
     longitude,
     event_type,
@@ -48,8 +51,7 @@ comuna_analysis = FOREACH comuna_stats {
     GENERATE 
         group as comuna,
         total as total_eventos,
-        tipos as tipos_eventos,
-        event_counts.(tipo_evento, total_eventos) as desglose;
+        tipos as tipos_eventos;
 }
 
 -- Guardar resultados

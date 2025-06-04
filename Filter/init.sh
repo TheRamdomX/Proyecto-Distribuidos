@@ -25,6 +25,7 @@ if [ -f "/filter/data/events.csv" ]; then
     # Ejecutar script Pig
     echo "Ejecutando script Pig..."
     pig -x local filter_events.pig
+    chmod -R 777 /filter/results/filtered_events/
 else
     echo "❌ Error: No se pudo crear el archivo CSV"
     exit 1

@@ -53,11 +53,7 @@ unique_events = FILTER joined_events BY id2 IS NULL;
 -- Convertir de vuelta al formato original
 final_events = FOREACH unique_events GENERATE
     sorted_events::sorted::id as id,
-    CONCAT(
-        SUBSTRING(ToString(ToDate(sorted_events::sorted::unix_ts * 1000L)), 0, 10),
-        ' ',
-        SUBSTRING(ToString(ToDate(sorted_events::sorted::unix_ts * 1000L)), 11, 8)
-    ) as timestamp,
+    sorted_events::sorted::unix_ts as unix_ts,
     sorted_events::sorted::latitude as latitude,
     sorted_events::sorted::longitude as longitude,
     sorted_events::sorted::event_type as event_type,
