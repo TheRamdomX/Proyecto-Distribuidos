@@ -63,11 +63,15 @@ graph LR
 
 ## 📦 Parte 2: Sistema de Procesamiento y Análisis
 
-### Componentes
+### Componentes Agregados
 
-1. **Pig Processor** 🐷: Procesa y analiza los eventos almacenados
-2. **Filter System** 🔍: Elimina eventos duplicados y cercanos
-3. **Analysis System** 📊: Genera análisis temporales y espaciales
+1.  **Filter System** 🔍: Elimina eventos duplicados y cercanos
+2.  **Pig Processor** 🐷: Procesa y analiza los eventos almacenados
+
+### Componentes No Utilizados
+
+1. **Traffic Generator** 🎯: Simula las querys de usuarios con distintas distribuciones
+2. **Cache System** 🧊: Recibe las consultas simulando un sistema caché
 
 ### Descripción
 
@@ -84,8 +88,7 @@ El sistema procesa los datos recolectados para generar análisis detallados y el
 graph LR
     A[(MySQL)] -->|Export| B[Filter System]
     B -->|Filter| C[Pig Processor]
-    C -->|Analyze| D[Analysis System]
-    D -->|Store| E[(Results)]
+    C -->|Store| D[(Results)]
 ```
 
 ### Servicios
@@ -93,25 +96,25 @@ graph LR
 | 🌐 Servicio          | 📝 Descripción              |
 |---------------------|------------------------------|
 | 🐷 Pig Processor     | Procesamiento de eventos    |
-| 🔍 Filter System     | Eliminación de duplicados   |
-| 📊 Analysis System   | Generación de análisis      |
+| 🔍 Filter System     | Eliminación de redundancias   |
 
 ### Análisis Generados
 
 1. **Análisis por Comuna**
+   - Nombre de la comuna
    - Total de eventos por comuna
-   - Tipos de eventos por comuna
-   - Desglose detallado por tipo
+   - Numero de tipos de eventos por comuna
 
-2. **Análisis Temporal**
-   - Eventos por hora del día
-   - Patrones temporales por tipo de evento
-   - Distribución de eventos en el tiempo
 
-3. **Filtrado de Datos**
-   - Eliminación de eventos duplicados
-   - Filtrado de eventos cercanos
-   - Limpieza de datos redundantes
+3. **Análisis por Comuna Detallado**
+   - Nombre de la comuna
+   - Tipo de evento
+   - Total de eventos
+
+5. **Análisis Temporal**
+   - Tipo de evento
+   - Hora del día
+   - Total de eventos
 
 ## 🚀 Quick Start
 
