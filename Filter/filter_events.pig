@@ -1,63 +1,70 @@
 REGISTER '/opt/pig/lib/piggybank.jar';
 
--- Limpiar directorios de resultados anteriores
+-- Limpiar resultados anteriores
 rmf /filter/results/filtered_events;
 
--- Cargar eventos desde archivo CSV
+-- Cargar eventos desde CSV
 events = LOAD '/filter/data/events.csv' USING PigStorage(',') AS 
     (id:int, timestamp:chararray, latitude:double, longitude:double, event_type:chararray, comuna:chararray);
 
--- Convertir timestamp a Unix timestamp para facilitar el agrupamiento
+-- Convertir timestamp a Unix time
 events_with_ts = FOREACH events GENERATE
     id,
-    ToUnixTime(ToDate(timestamp, 'yyyy-MM-dd HH:mm:ss')) as unix_ts,
+    ToUnixTime(ToDate(timestamp, 'yyyy-MM-dd HH:mm:ss')) AS unix_ts,
     latitude,
     longitude,
     event_type,
     comuna;
 
--- Agrupar por tipo de evento y ventana de tiempo (1 hora)
-grouped_by_time = GROUP events_with_ts BY (event_type, FLOOR(unix_ts/3600));
+-- Redondear coordenadas para agrupar por proximidad
+events_grouped = FOREACH events_with_ts GENERATE
+    id,
+    unix_ts,
+    latitude,
+    longitude,
+    event_type,
+    comuna,
+    ROUND(latitude * 10000) AS lat_rounded,
+    ROUND(longitude * 10000) AS lon_rounded;
 
--- Para cada grupo, ordenar eventos por timestamp
-sorted_events = FOREACH grouped_by_time {
-    sorted = ORDER events_with_ts BY unix_ts;
-    GENERATE FLATTEN(sorted);
-}
+-- Agrupar por tipo de evento y coordenadas redondeadas
+grouped = GROUP events_grouped BY (event_type, lat_rounded, lon_rounded);
 
--- Generar pares de eventos para comparar
-event_pairs = CROSS sorted_events, sorted_events;
+-- Aplanar los grupos para procesar
+flattened_events = FOREACH grouped GENERATE FLATTEN(events_grouped);
 
--- Filtrar solo pares donde el segundo evento es posterior
-valid_pairs = FILTER event_pairs BY sorted_events::sorted::unix_ts < sorted_events::sorted::unix_ts;
+-- Crear dos copias con alias diferentes
+events_copy1 = FOREACH flattened_events GENERATE *;
+events_copy2 = FOREACH flattened_events GENERATE *;
 
--- Calcular distancia entre eventos
-pairs_with_distance = FOREACH valid_pairs GENERATE
-    sorted_events::sorted::id as id1,
-    sorted_events::sorted::id as id2,
-    SQRT((sorted_events::sorted::latitude - sorted_events::sorted::latitude) * (sorted_events::sorted::latitude - sorted_events::sorted::latitude) + 
-         (sorted_events::sorted::longitude - sorted_events::sorted::longitude) * (sorted_events::sorted::longitude - sorted_events::sorted::longitude)) as distance;
+-- Crear pares usando JOIN consigo mismo en las mismas coordenadas
+self_join = JOIN events_copy1 BY (event_type, lat_rounded, lon_rounded), 
+            events_copy2 BY (event_type, lat_rounded, lon_rounded);
 
--- Identificar eventos duplicados (distancia < 0.001)
-duplicates = FILTER pairs_with_distance BY distance < 0.001;
+-- Filtrar pares que cumplen criterios de duplicación
+filtered_pairs = FILTER self_join BY 
+    events_copy1::events_grouped::id < events_copy2::events_grouped::id AND
+    ABS(events_copy1::events_grouped::unix_ts - events_copy2::events_grouped::unix_ts) <= 300 AND
+    ABS(events_copy1::events_grouped::latitude - events_copy2::events_grouped::latitude) < 0.0001 AND
+    ABS(events_copy1::events_grouped::longitude - events_copy2::events_grouped::longitude) < 0.0001;
 
--- Obtener IDs de eventos duplicados
-duplicate_ids = FOREACH duplicates GENERATE id2;
+-- Extraer IDs de eventos duplicados
+duplicate_ids = FOREACH filtered_pairs GENERATE events_copy2::events_grouped::id AS id;
 
--- Unir eventos originales con duplicados usando LEFT OUTER JOIN
-joined_events = JOIN sorted_events BY sorted::id LEFT OUTER, duplicate_ids BY id2;
+-- LEFT OUTER JOIN para marcar duplicados
+joined = JOIN events_with_ts BY id LEFT OUTER, duplicate_ids BY id;
 
--- Filtrar eventos que no tienen duplicados (id2 es null)
-unique_events = FILTER joined_events BY id2 IS NULL;
+-- Filtrar eventos no duplicados
+filtered_events = FILTER joined BY duplicate_ids::id IS NULL;
 
--- Convertir de vuelta al formato original
-final_events = FOREACH unique_events GENERATE
-    sorted_events::sorted::id as id,
-    sorted_events::sorted::unix_ts as unix_ts,
-    sorted_events::sorted::latitude as latitude,
-    sorted_events::sorted::longitude as longitude,
-    sorted_events::sorted::event_type as event_type,
-    sorted_events::sorted::comuna as comuna;
+-- Formato de salida
+final = FOREACH filtered_events GENERATE
+    events_with_ts::id AS id,
+    events_with_ts::unix_ts AS unix_ts,
+    events_with_ts::latitude AS latitude,
+    events_with_ts::longitude AS longitude,
+    events_with_ts::event_type AS event_type,
+    events_with_ts::comuna AS comuna;
 
--- Guardar resultados en archivo
-STORE final_events INTO '/filter/results/filtered_events' USING PigStorage(','); 
+-- Guardar resultados
+STORE final INTO '/filter/results/filtered_events' USING PigStorage(',');

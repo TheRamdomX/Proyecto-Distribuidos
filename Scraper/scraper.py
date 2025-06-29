@@ -248,4 +248,4 @@ if __name__ == "__main__":
             t.join()
 
         print(f"Iteración de scraping terminada. Total eventos: {EVENT_COUNT}")
-        time.sleep(60)
+        time.sleep(600)

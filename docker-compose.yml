@@ -93,6 +93,7 @@ services:
       - MYSQL_PASSWORD=rootpass
       - MYSQL_DATABASE=waze_db
     volumes:
+      - ./Pig/data:/pig/data
       - ./Pig/results:/pig/results
       - ./Filter/results:/filter/results
       - mysql_files:/var/lib/mysql-files
