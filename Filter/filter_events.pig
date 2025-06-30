@@ -57,14 +57,23 @@ joined = JOIN events_with_ts BY id LEFT OUTER, duplicate_ids BY id;
 -- Filtrar eventos no duplicados
 filtered_events = FILTER joined BY duplicate_ids::id IS NULL;
 
--- Formato de salida
-final = FOREACH filtered_events GENERATE
+-- Convertir timestamp Unix de vuelta a formato legible
+events_with_readable_ts = FOREACH filtered_events GENERATE
     events_with_ts::id AS id,
-    events_with_ts::unix_ts AS unix_ts,
+    (long)events_with_ts::unix_ts AS unix_ts_long,
     events_with_ts::latitude AS latitude,
     events_with_ts::longitude AS longitude,
     events_with_ts::event_type AS event_type,
     events_with_ts::comuna AS comuna;
+
+-- Formato de salida
+final = FOREACH events_with_readable_ts GENERATE
+    id,
+    unix_ts_long AS timestamp,
+    latitude,
+    longitude,
+    event_type,
+    comuna;
 
 -- Guardar resultados
 STORE final INTO '/filter/results/filtered_events' USING PigStorage(',');

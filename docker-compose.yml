@@ -43,61 +43,116 @@ services:
       timeout: 5s
       retries: 5
 
-  scraper:
-    build:
-      context: ./Scraper
-      dockerfile: Dockerfile
-    depends_on:
-      - kafka
-    environment:
-      - KAFKA_SERVER=kafka:9092
-    restart: always 
+  # scraper:
+  #   build:
+  #     context: ./Scraper
+  #     dockerfile: Dockerfile
+  #   depends_on:
+  #     - storage
+  #     - elasticsearch
+  #     - kafka
+  #   environment:
+  #     - KAFKA_SERVER=kafka:9092
+  #   restart: always 
 
   storage:
     build:
       context: ./Storage
       dockerfile: Dockerfile
     depends_on:
+      - elasticsearch
       - kafka
       - mysql
     restart: always 
 
-  pig-filter:
-    build:
-      context: ./Filter
-      dockerfile: Dockerfile
-    depends_on:
-      mysql:
-        condition: service_healthy
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    ports:
+      - "9200:9200"
+      - "9300:9300"
     environment:
-      - MYSQL_HOST=mysql
-      - MYSQL_USER=root
-      - MYSQL_PASSWORD=rootpass
-      - MYSQL_DATABASE=waze_db
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - network.host=0.0.0.0
+      - http.port=9200
     volumes:
-      - ./Filter/data:/filter/data
-      - ./Filter/results:/filter/results
-      - mysql_files:/var/lib/mysql-files
-    restart: "no"
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
-  pig-processor:
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: always
+
+  elastic-inserter:
     build:
-      context: ./Pig
+      context: ./Elastic
       dockerfile: Dockerfile
     depends_on:
-      pig-filter:
-        condition: service_completed_successfully
-    environment:
-      - MYSQL_HOST=mysql
-      - MYSQL_USER=root
-      - MYSQL_PASSWORD=rootpass
-      - MYSQL_DATABASE=waze_db
+      elasticsearch:
+        condition: service_healthy
+      storage:
+        condition: service_started
     volumes:
-      - ./Pig/data:/pig/data
+      - ./Elastic/data:/elastic/data
       - ./Pig/results:/pig/results
       - ./Filter/results:/filter/results
-      - mysql_files:/var/lib/mysql-files
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
     restart: "no"
+
+  # pig-filter:
+  #   build:
+  #     context: ./Filter
+  #     dockerfile: Dockerfile
+  #   depends_on:
+  #     - elasticsearch
+  #     mysql:
+  #       condition: service_healthy
+  #   environment:
+  #     - MYSQL_HOST=mysql
+  #     - MYSQL_USER=root
+  #     - MYSQL_PASSWORD=rootpass
+  #     - MYSQL_DATABASE=waze_db
+  #   volumes:
+  #     - ./Filter/data:/filter/data
+  #     - ./Filter/results:/filter/results
+  #     - mysql_files:/var/lib/mysql-files
+  #   restart: "no"
+
+  # pig-processor:
+  #   build:
+  #     context: ./Pig
+  #     dockerfile: Dockerfile
+  #   depends_on:
+  #     pig-filter:
+  #       condition: service_completed_successfully
+  #   environment:
+  #     - MYSQL_HOST=mysql
+  #     - MYSQL_USER=root
+  #     - MYSQL_PASSWORD=rootpass
+  #     - MYSQL_DATABASE=waze_db
+  #   volumes:
+  #     - ./Pig/data:/pig/data
+  #     - ./Pig/results:/pig/results
+  #     - ./Filter/results:/filter/results
+  #     - mysql_files:/var/lib/mysql-files
+  #   restart: "no"
 
   # redis:
   #   image: redis:alpine
@@ -151,4 +206,5 @@ services:
 volumes:
   mysql_data:
   mysql_files:
+  elasticsearch_data:
   # redis_data:
