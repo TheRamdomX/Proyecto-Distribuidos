@@ -110,7 +110,6 @@ def clean_and_validate_data(df, expected_columns):
         print(f"⚠️  Columnas faltantes: {missing_columns}")
         return None
     
-    # Eliminar filas con valores nulos en columnas críticas
     initial_count = len(df)
     df_clean = df.dropna(subset=expected_columns)
     final_count = len(df_clean)

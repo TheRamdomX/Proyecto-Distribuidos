@@ -36,7 +36,7 @@ EVENT_COUNT = 0
 # Coordenadas y cuadrantes del scrapeo
 top, bottom = -33.2, -33.7
 left, right = -70.8, -70.3
-filas, columnas = 45, 45
+filas, columnas = 45, 45 # 2025 cuadrantes de 500m x 500m
 
 # Configuracion del productor de Kafka
 producer = KafkaProducer(
@@ -49,10 +49,8 @@ def generar_cuadrantes(top, bottom, left, right, filas, columnas):
     lng_step = (right - left) / columnas
     cuadrantes = []
     
-    # Generar cuadrantes en un patrón de zigzag para mejor distribución
     for i in range(filas):
         for j in range(columnas):
-            # Si la fila es par, invertir el orden de las columnas
             j_actual = j if i % 2 == 0 else columnas - 1 - j
             lat = bottom + i * lat_step + lat_step / 2
             lng = left + j_actual * lng_step + lng_step / 2

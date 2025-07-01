@@ -104,6 +104,8 @@ services:
       context: ./Elastic
       dockerfile: Dockerfile
     depends_on:
+      pig-processor:
+        condition: service_completed_successfully
       elasticsearch:
         condition: service_healthy
       storage:
@@ -116,51 +118,75 @@ services:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
     restart: "no"
 
-  # pig-filter:
-  #   build:
-  #     context: ./Filter
-  #     dockerfile: Dockerfile
-  #   depends_on:
-  #     - elasticsearch
-  #     mysql:
-  #       condition: service_healthy
-  #   environment:
-  #     - MYSQL_HOST=mysql
-  #     - MYSQL_USER=root
-  #     - MYSQL_PASSWORD=rootpass
-  #     - MYSQL_DATABASE=waze_db
-  #   volumes:
-  #     - ./Filter/data:/filter/data
-  #     - ./Filter/results:/filter/results
-  #     - mysql_files:/var/lib/mysql-files
-  #   restart: "no"
+  pig-filter:
+    build:
+      context: ./Filter
+      dockerfile: Dockerfile
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=rootpass
+      - MYSQL_DATABASE=waze_db
+    volumes:
+      - ./Filter/data:/filter/data
+      - ./Filter/results:/filter/results
+      - mysql_files:/var/lib/mysql-files
+    restart: "no"
 
-  # pig-processor:
-  #   build:
-  #     context: ./Pig
-  #     dockerfile: Dockerfile
-  #   depends_on:
-  #     pig-filter:
-  #       condition: service_completed_successfully
-  #   environment:
-  #     - MYSQL_HOST=mysql
-  #     - MYSQL_USER=root
-  #     - MYSQL_PASSWORD=rootpass
-  #     - MYSQL_DATABASE=waze_db
-  #   volumes:
-  #     - ./Pig/data:/pig/data
-  #     - ./Pig/results:/pig/results
-  #     - ./Filter/results:/filter/results
-  #     - mysql_files:/var/lib/mysql-files
-  #   restart: "no"
+  pig-processor:
+    build:
+      context: ./Pig
+      dockerfile: Dockerfile
+    depends_on:
+      pig-filter:
+        condition: service_completed_successfully
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=rootpass
+      - MYSQL_DATABASE=waze_db
+    volumes:
+      - ./Pig/data:/pig/data
+      - ./Pig/results:/pig/results
+      - ./Filter/results:/filter/results
+      - mysql_files:/var/lib/mysql-files
+    restart: "no"
 
-  # redis:
-  #   image: redis:alpine
-  #   restart: always
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
+  redis:
+    image: redis:alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  elastic-cache:
+    build:
+      context: ./Elastic-Cache
+      dockerfile: Dockerfile
+    depends_on:
+      elastic-inserter:
+        condition: service_completed_successfully
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - REDIS_HOST=redis
+    restart: always
+
+volumes:
+  mysql_data:
+  mysql_files:
+  elasticsearch_data:
+  redis_data:  
+
   
   # traffic-generator:
   #   build:
@@ -182,6 +208,8 @@ services:
   #     context: ./Cache
   #     dockerfile: Dockerfile
   #   depends_on:
+  #      elastic-inserter:
+  #      condition: service_completed_successfully
   #     - kafka
   #     - redis
   #   environment:
@@ -203,8 +231,3 @@ services:
   #     - CACHE_POLICY=Random
   #   restart: always  
 
-volumes:
-  mysql_data:
-  mysql_files:
-  elasticsearch_data:
-  # redis_data:

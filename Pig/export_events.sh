@@ -6,7 +6,7 @@ mkdir -p /pig/results
 
 # Esperar a que el archivo de Filter esté disponible
 echo "Esperando a que el archivo de Filter esté disponible..."
-max_attempts=12  # 12 intentos * 5 segundos = 60 segundos máximo
+max_attempts=12  
 attempt=1
 
 while [ ! -f "/filter/results/filtered_events/part-r-00000" ] && [ $attempt -le $max_attempts ]; do
